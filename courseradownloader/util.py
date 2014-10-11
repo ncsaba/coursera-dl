@@ -103,6 +103,3 @@ def trim_path(pathname, max_path_len=255, min_len=5):
     print ' Trimmed path name "%s" to "%s" to fit required length (%d)' % (pathname, new_pathname, max_path_len)
 
     return new_pathname
-
-
-
