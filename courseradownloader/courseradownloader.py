@@ -19,6 +19,9 @@ from os import path
 from util import *
 import _version
 
+MAX_PATH_LENGTH_WINDOWS = 260
+MAX_PATH_LENGTH_LINUX = 4096
+
 class CourseraDownloader(object):
     """
     Class to download content (videos, lecture notes, ...) from coursera.org for
@@ -162,7 +165,6 @@ class CourseraDownloader(object):
         """Given the name of a course, return the video lecture url"""
         return self.LECTURE_URL % course_name
 
-    #TODO: simple hack, something more elaborate needed
     def trim_path_part(self,s):
         mppl = self.max_path_part_len
         if mppl and len(s) > mppl:
@@ -262,7 +264,7 @@ class CourseraDownloader(object):
                             resourceLinks.append( (vurl,fn) )
 
                     except urllib2.HTTPError as e:
-                        # sometimes there is a lecture without a vidio (e.g.,
+                        # sometimes there is a lecture without a video (e.g.,
                         # genes-001) so this can happen.
                         print " Warning: failed to open the direct video link %s: %s" % (lurl,e)
 
@@ -304,7 +306,7 @@ class CourseraDownloader(object):
             print '    - skipping "%s" (extension ignored)' % fname
             return
 
-        filepath = path.join(target_dir, fname)
+        filepath = trim_path(path.join(target_dir, fname), get_max_path_length()-1, 1)
 
         dl = True
         if path.exists(filepath):
@@ -455,6 +457,15 @@ class CourseraDownloader(object):
 
 
 
+def get_max_path_length():
+    '''
+    Gets the maximum path length supported by the operating system
+    '''
+    if platform.system() == 'Windows':
+        return MAX_PATH_LENGTH_WINDOWS
+    else:
+        return MAX_PATH_LENGTH_LINUX
+
 def get_netrc_creds():
     """
     Read username/password from the users' netrc file. Returns None if no
@@ -492,7 +503,6 @@ def get_netrc_creds():
 
     return creds
 
-
 def normalize_string(str):
     return ''.join(x for x in str if x not in ' \t-_()"01234567890').lower()
 
@@ -516,7 +526,6 @@ def find_renamed(filename, size):
 
     return None, None
 
-
 def main():
     # parse the commandline arguments
     parser = argparse.ArgumentParser(description='Download Coursera.org course videos/docs for offline use.')
@@ -533,8 +542,8 @@ def main():
                         type=str, help='one or more course names from the url (e.g., comnets-2012-001)')
     parser.add_argument("--gz",
                         dest='gzip_courses',action="store_true",default=False,help='Tarball courses for archival storage (folders get deleted)')
-    parser.add_argument("-mppl", dest='mppl', type=int, default=100,
-                        help='Maximum length of filenames/dirs in a path (windows only)')
+    parser.add_argument("-mppl", dest='mppl', type=int, default=120,
+                        help='Maximum length of filenames/dirs in a path')
     parser.add_argument("-w", dest='wkfilter', type=str, default=None,
                         help="Comma separted list of sequence/lesson/week numbers to download e.g., 1,3,8")
     args = parser.parse_args()
@@ -559,16 +568,7 @@ def main():
         if not password:
             password = getpass.getpass()
 
-    # should we be trimming paths?
-    #TODO: this is a simple hack, something more elaborate needed
-    mppl = None
-    if args.mppl:
-        if platform.system() == "Windows":
-            mppl = 90
-            print "Maximum length of a path component set to %s" % mppl
-        else:
-            # linux max path length is typically around 4060 so assume thats ok
-            pass
+    mppl = args.mppl
 
     # instantiate the downloader class
     d = CourseraDownloader(
