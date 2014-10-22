@@ -1,3 +1,6 @@
+* 3.0.1 - Wed 22 Oct 2014
+  - merge path length patch from Biju Joseph Jacob
+
 * 3.0 - Mon 04 Aug 2014
   - revert to mechanize branch after sustained issues
   - backport 2.x commits
