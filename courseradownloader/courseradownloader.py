@@ -57,7 +57,8 @@ class CourseraDownloader(object):
                         ignorefiles=None,
                         max_path_part_len=None,
                         gzip_courses=False,
-                        wk_filter=None):
+                        wk_filter=None,
+                        lang=None):
 
         self.username = username
         self.password = password
@@ -72,6 +73,7 @@ class CourseraDownloader(object):
         self.proxy = proxy
         self.max_path_part_len = max_path_part_len
         self.gzip_courses = gzip_courses
+        self.lang = lang
 
         try:
             self.wk_filter = map(int,wk_filter.split(",")) if wk_filter else None
@@ -238,6 +240,14 @@ class CourseraDownloader(object):
                     if h.find('source_videos') > 0:
                         print "   - will skip raw source video " + h
                     else:
+                        if self.lang and h.find('subtitles') > 0:
+                            # Substitutes the matched language with user's one
+                            def language(match):
+                                num = match.group('num')
+                                return 'q={num}_{lang}'.format(num=num, lang=self.lang )
+
+                            h = re.sub('q=(?P<num>[\d]+)_\w+', language, h)
+
                         # Dont set a filename here, that will be inferred from the week
                         # titles
                         resourceLinks.append( (h,None) )
@@ -533,6 +543,7 @@ def main():
     parser.add_argument("-p", dest='password', type=str, help='coursera password')
     parser.add_argument("-d", dest='dest_dir', type=str, default=".", help='destination directory where everything will be saved')
     parser.add_argument("-n", dest='ignorefiles', type=str, default="", help='comma-separated list of file extensions to skip, e.g., "ppt,srt,pdf"')
+    parser.add_argument("-l", dest='lang', type=str, help='language of subtitles')
     parser.add_argument("-q", dest='parser', type=str, default=CourseraDownloader.DEFAULT_PARSER,
                         help="the html parser to use, see http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser")
     parser.add_argument("-x", dest='proxy', type=str, default=None, help="proxy to use, e.g., foo.bar.com:3125")
@@ -579,7 +590,8 @@ def main():
                            ignorefiles=args.ignorefiles,
                            max_path_part_len=mppl,
                            gzip_courses=args.gzip_courses,
-                           wk_filter=args.wkfilter
+                           wk_filter=args.wkfilter,
+                           lang=args.lang,
                           )
 
     # authenticate, only need to do this once but need a classaname to get hold
