@@ -49,6 +49,21 @@ class CourseraDownloader(object):
     # how long to try to open a URL before timing out
     TIMEOUT=60.0
 
+    HTML_TEMPLATE = '''<!DOCTYPE html>
+    <html><head>
+        <meta charset="utf-8">
+        <title>Course materials</title>
+        <style type="text/css">
+          body { font-family: Sans-Serif; font-size: 90%%; }
+          a { font-size: 90%%; color: #07c; }
+          a:visited { color: #07c; }
+          h3 { color: #808080; }
+          div { color: #404040; margin: 10px; }
+        </style>
+    </head><body>
+    %s
+    </body></html>'''
+
 
     def __init__(self,username,
                         password,
@@ -74,6 +89,8 @@ class CourseraDownloader(object):
         self.max_path_part_len = max_path_part_len
         self.gzip_courses = gzip_courses
         self.lang = lang
+
+        self.html = ""
 
         try:
             self.wk_filter = map(int,wk_filter.split(",")) if wk_filter else None
@@ -291,7 +308,7 @@ class CourseraDownloader(object):
         r = self.browser.open(url,timeout=self.TIMEOUT)
         return r.info()
 
-    def download(self, url, target_dir=".", target_fname=None):
+    def download(self, url, target_dir=".", target_fname=None, class_dir=None):
         """
         Download the url to the given filename
         """
@@ -317,6 +334,8 @@ class CourseraDownloader(object):
             return
 
         filepath = trim_path(path.join(target_dir, fname), get_max_path_length()-1, 1)
+
+        if (class_dir): self.html += '<a href="%s">%s</a> \n' % (path.join(class_dir, fname), ext[1:])
 
         dl = True
         if path.exists(filepath):
@@ -417,6 +436,7 @@ class CourseraDownloader(object):
         except Exception as e:
             print "Warning: failed to download about file",e
 
+
         # now download the actual content (video's, lecture notes, ...)
         for j, (weeklyTopic, weekClasses) in enumerate(weeklyTopics,start=1):
 
@@ -434,6 +454,7 @@ class CourseraDownloader(object):
                 os.makedirs(wkdir)
 
             print " - " + weeklyTopic
+            self.html += "<h3>%s</h3>\n" % weeklyTopic
 
             for i, (className, classResources) in enumerate(weekClasses,start=1):
 
@@ -448,13 +469,24 @@ class CourseraDownloader(object):
 
                 print "  - Downloading resources for " + className
 
+                self.html += "<div>%s<br>\n" % className
+
                 # download each resource
                 for classResource,tfname in classResources:
                     try:
-                       #print '  - Downloading ', classResource
-                       self.download(classResource,target_dir=clsdir,target_fname=tfname)
+                        print '    - Downloading ', classResource, tfname
+                        self.download(classResource,target_dir=clsdir,target_fname=tfname,
+                            class_dir=path.join(wkdirname, clsdirname))
                     except Exception as e:
-                       print "    - failed: ",classResource,e
+                        print "    - failed: ",classResource,e
+                self.html += "</div>\n"
+
+        try:
+            file = open(path.join(course_dir, 'materials.html'), "w")
+            file.write(self.HTML_TEMPLATE % self.html)
+            file.close()
+        except Exception as e:
+           print "  - Writing materials.html failed: ",e
 
         if gzip_courses:
             tar_file_name = cname + ".tar.gz"
