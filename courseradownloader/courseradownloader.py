@@ -486,7 +486,7 @@ class CourseraDownloader(object):
             file.write(self.HTML_TEMPLATE % self.html)
             file.close()
         except Exception as e:
-           print "  - Writing materials.html failed: ",e
+            print "  - Writing materials.html failed: ",e 
 
         if gzip_courses:
             tar_file_name = cname + ".tar.gz"
