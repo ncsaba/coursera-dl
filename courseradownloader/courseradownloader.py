@@ -34,6 +34,7 @@ class CourseraDownloader(object):
     :keyword proxy: http proxy, eg: foo.bar.com:1234
     :keyword parser: xml parser
     :keyword ignorefiles: comma separated list of file extensions to skip (e.g., "ppt,srt")
+    :keyword includefiles: comma separated list of file extensions to download (e.g., "pdf")
     """
     BASE_URL =    'https://class.coursera.org/%s'
     HOME_URL =    BASE_URL + '/class/index'
@@ -70,6 +71,7 @@ class CourseraDownloader(object):
                         proxy=None,
                         parser=DEFAULT_PARSER,
                         ignorefiles=None,
+                        includefiles=None,
                         max_path_part_len=None,
                         gzip_courses=False,
                         wk_filter=None,
@@ -79,10 +81,8 @@ class CourseraDownloader(object):
         self.password = password
         self.parser = parser
 
-        # Split "ignorefiles" argument on commas, strip, remove prefixing dot
-        # if there is one, and filter out empty tokens.
-        self.ignorefiles =  [x.strip()[1:] if x[0]=='.' else x.strip()
-                             for x in ignorefiles.split(',') if len(x)]
+        self.ignorefiles =  self.parseFileExtensions(ignorefiles)
+        self.includefiles = self.parseFileExtensions(includefiles)
 
         self.browser = None
         self.proxy = proxy
@@ -97,6 +97,15 @@ class CourseraDownloader(object):
         except Exception as e:
             print "Invalid week filter, should be a comma separated list of integers", e
             exit()
+
+    @staticmethod
+    def parseFileExtensions(extensionsStr):
+        """
+        Split strings with file extensions ("ignorefiles" and "includefiles" arguments) on commas,
+        strip, remove prefixing dot if there is one, and filter out empty tokens.
+        """
+        return [x.strip()[1:] if x[0]=='.' else x.strip()
+                for x in extensionsStr.split(',') if len(x)]
 
     def login(self,className):
         """
@@ -331,6 +340,12 @@ class CourseraDownloader(object):
         # check if we should skip it (remember to remove the leading .)
         if ext and ext[1:] in self.ignorefiles:
             print '    - skipping "%s" (extension ignored)' % fname
+            return
+
+        # if downloading class resource (as opposed to lecture/syllabus pages), and '-i' arg specified
+        # then skip other file extensions (and files with no extensions)
+        if (class_dir and self.includefiles and not (ext and ext[1:] in self.includefiles)):
+            print '    - skipping "%s" (extension not included)' % fname
             return
 
         filepath = trim_path(path.join(target_dir, fname), get_max_path_length()-1, 1)
@@ -575,6 +590,7 @@ def main():
     parser.add_argument("-p", dest='password', type=str, help='coursera password')
     parser.add_argument("-d", dest='dest_dir', type=str, default=".", help='destination directory where everything will be saved')
     parser.add_argument("-n", dest='ignorefiles', type=str, default="", help='comma-separated list of file extensions to skip, e.g., "ppt,srt,pdf"')
+    parser.add_argument("-i", dest='includefiles', type=str, default="", help='comma-separated list of file extensions to download, e.g., "pdf,doc"')
     parser.add_argument("-l", dest='lang', type=str, help='language of subtitles')
     parser.add_argument("-q", dest='parser', type=str, default=CourseraDownloader.DEFAULT_PARSER,
                         help="the html parser to use, see http://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser")
@@ -620,6 +636,7 @@ def main():
                            proxy=args.proxy,
                            parser=html_parser,
                            ignorefiles=args.ignorefiles,
+                           includefiles=args.includefiles,
                            max_path_part_len=mppl,
                            gzip_courses=args.gzip_courses,
                            wk_filter=args.wkfilter,
