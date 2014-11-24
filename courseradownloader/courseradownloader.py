@@ -81,12 +81,8 @@ class CourseraDownloader(object):
         self.password = password
         self.parser = parser
 
-        # Split "ignorefiles" and "includefiles" arguments on commas, strip, remove prefixing dot
-        # if there is one, and filter out empty tokens.
-        self.ignorefiles =  [x.strip()[1:] if x[0]=='.' else x.strip()
-                             for x in ignorefiles.split(',') if len(x)]
-        self.includefiles = [x.strip()[1:] if x[0]=='.' else x.strip()
-                             for x in includefiles.split(',') if len(x)]
+        self.ignorefiles =  self.parseFileExtensions(ignorefiles)
+        self.includefiles = self.parseFileExtensions(includefiles)
 
         self.browser = None
         self.proxy = proxy
@@ -101,6 +97,15 @@ class CourseraDownloader(object):
         except Exception as e:
             print "Invalid week filter, should be a comma separated list of integers", e
             exit()
+
+    @staticmethod
+    def parseFileExtensions(extensionsStr):
+        """
+        Split strings with file extensions ("ignorefiles" and "includefiles" arguments) on commas,
+        strip, remove prefixing dot if there is one, and filter out empty tokens.
+        """
+        return [x.strip()[1:] if x[0]=='.' else x.strip()
+                for x in extensionsStr.split(',') if len(x)]
 
     def login(self,className):
         """
