@@ -1,5 +1,6 @@
 * 3.1 - Wed 26 Nov 2014
-  - add '-i INCLUDEFILES' option
+  - add '-i INCLUDEFILES' option (file extensions to download)
+  - add '-l LANG' option (subtitles' language choice)
   - generate html output with lectures and resources list
 
 * 3.0.1 - Wed 22 Oct 2014
