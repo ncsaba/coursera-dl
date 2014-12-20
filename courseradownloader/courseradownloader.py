@@ -112,11 +112,11 @@ class CourseraDownloader(object):
         Login into coursera and obtain the necessary session cookies.
         """
         hn,fn = tempfile.mkstemp()
-        cookies = cookielib.LWPCookieJar()
+        cj = cookielib.LWPCookieJar()
         handlers = [
             urllib2.HTTPHandler(),
             urllib2.HTTPSHandler(),
-            urllib2.HTTPCookieProcessor(cookies)
+            urllib2.HTTPCookieProcessor(cj)
         ]
 
         # prepend a proxy handler if defined
@@ -136,24 +136,23 @@ class CourseraDownloader(object):
                 raise Exception("Unknown class %s" % className)
 
         # get the csrf token
-        csrfcookie = [c for c in cookies if c.name == "csrf_token"]
+        csrfcookie = [c for c in cj if c.name == "csrf_token"]
         if not csrfcookie: raise Exception("Failed to find csrf cookie")
         csrftoken = csrfcookie[0].value
-        opener.close()
 
-        # call the authenticator url:
-        cj = cookielib.MozillaCookieJar(fn)
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj),
-                                    urllib2.HTTPHandler(),
-                                    urllib2.HTTPSHandler())
-
-        opener.addheaders.append(('Cookie', 'csrftoken=%s' % csrftoken))
-        opener.addheaders.append(('Referer', 'https://www.coursera.org'))
-        opener.addheaders.append(('X-CSRFToken', csrftoken))
-        req = urllib2.Request(self.LOGIN_URL)
-
+        csrfcookie = cookielib.Cookie(version=0, name='csrftoken', value=csrftoken,
+                                      domain='.coursera.org', domain_specified=False, domain_initial_dot=False,
+                                      path='/', path_specified=False,
+                                      expires=None,
+                                      secure=False,
+                                      comment=None, comment_url=None,
+                                      rest={'HttpOnly':None},
+                                      rfc2109=False,
+                                      discard=False,
+                                      port=None, port_specified=False)
+        cj.set_cookie(csrfcookie)
         data = urllib.urlencode({'email': self.username,'password': self.password,'webrequest': 'true'})
-        req.add_data(data)
+        req = urllib2.Request(self.LOGIN_URL, data, { 'Referer': 'https://www.coursera.org', 'X-CSRFToken': csrftoken})
 
         try:
             opener.open(req)
